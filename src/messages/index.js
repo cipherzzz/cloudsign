@@ -72,6 +72,7 @@ function addUpdateRequest(request, record) {
                 }, Buffer.from(record.message.S)).toString();
                 record.signature.S = signature;
                 addUpdateRequest(request, record);
+                
             });
 
             console.log(request);

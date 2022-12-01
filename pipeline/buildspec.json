@@ -19,7 +19,7 @@
     },
     "pre_build": {
       "commands": [
-        "cd src/put-book",
+        "cd src/messages",
         "npm test",
         "rm -rf tests",
         "npm prune --production",
