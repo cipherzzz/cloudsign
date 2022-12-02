@@ -19,10 +19,10 @@ Globals:
     Timeout: 5
 
 Resources:
-  BookEventsQueue:
+  MessageEventsQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub 'book-events-${Environment}'
+      QueueName: !Sub 'message-events-${Environment}'
       KmsMasterKeyId: alias/aws/sqs
       Tags:
         - Key: project
@@ -30,117 +30,117 @@ Resources:
         - Key: environment
           Value: !Ref Environment
   
-  PutBookFunction:
+  PutMessageFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub 'messages-${Environment}'
       CodeUri: ./src/messages/
       Handler: index.handler
       AutoPublishAlias: !Ref Environment
-      DeploymentPreference:
-        Type: !If [IsProduction, Canary10Percent5Minutes, AllAtOnce]
-        Alarms:
-          - !Ref AliasErrorMetricGreaterThanZeroAlarm
-        Hooks:
-          PreTraffic: !Ref PreTrafficCheckFunction      
+      # DeploymentPreference:
+      #   Type: !If [IsProduction, Canary10Percent5Minutes, AllAtOnce]
+      #   Alarms:
+      #     - !Ref AliasErrorMetricGreaterThanZeroAlarm
+      #   Hooks:
+      #     PreTraffic: !Ref PreTrafficCheckFunction      
       Environment:
         Variables:
-          TABLE: !Ref BooksTable
+          TABLE: !Ref MessagesTable
       Tags:
         project: my-project
         environment: !Ref Environment
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref BooksTable
+            TableName: !Ref MessagesTable
         - SQSPollerPolicy:
-            QueueName: !Ref BookEventsQueue
+            QueueName: !Ref MessageEventsQueue
       Events:
-        NewBookEvent:
+        NewMessageEvent:
           Type: SQS
           Properties:
-            Queue: !GetAtt BookEventsQueue.Arn
+            Queue: !GetAtt MessageEventsQueue.Arn
             BatchSize: 5
             Enabled: true
   
-  BooksTable:
+  MessagesTable:
     Type: AWS::Serverless::SimpleTable
     Properties:
       PrimaryKey:
-        Name: isbn
+        Name: guid
         Type: String
-      TableName: !Sub 'books-${Environment}'
+      TableName: !Sub 'messages-${Environment}'
       Tags:
         project: my-project
         environment: !Ref Environment
       SSESpecification:
         SSEEnabled: true
 
-  PreTrafficCheckFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: !Sub 'CodeDeployHook_put-book-${Environment}-pre-traffic-check'
-      CodeUri: ./src/pre-traffic-check/
-      Handler: index.handler
-      Environment:
-        Variables:
-          TABLE: !Ref BooksTable
-          FN_NEW_VERSION: !Ref PutBookFunction.Version
-      Tags:
-        project: my-project
-        environment: !Ref Environment
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref BooksTable
-        - Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-              - codedeploy:PutLifecycleEventHookExecutionStatus
-            Resource:
-              !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:${ServerlessDeploymentApplication}/*'
-        - Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-              - lambda:InvokeFunction
-            Resource: !Ref PutBookFunction.Version
+  # PreTrafficCheckFunction:
+  #   Type: AWS::Serverless::Function
+  #   Properties:
+  #     FunctionName: !Sub 'CodeDeployHook_put-message-${Environment}-pre-traffic-check'
+  #     CodeUri: ./src/pre-traffic-check/
+  #     Handler: index.handler
+  #     Environment:
+  #       Variables:
+  #         TABLE: !Ref MessagesTable
+  #         FN_NEW_VERSION: !Ref PutMessageFunction.Version
+  #     Tags:
+  #       project: my-project
+  #       environment: !Ref Environment
+  #     Policies:
+  #       - DynamoDBCrudPolicy:
+  #           TableName: !Ref MessagesTable
+  #       - Version: '2012-10-17'
+  #         Statement:
+  #         - Effect: Allow
+  #           Action:
+  #             - codedeploy:PutLifecycleEventHookExecutionStatus
+  #           Resource:
+  #             !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:${ServerlessDeploymentApplication}/*'
+  #       - Version: '2012-10-17'
+  #         Statement:
+  #         - Effect: Allow
+  #           Action:
+  #             - lambda:InvokeFunction
+  #           Resource: !Ref PutMessageFunction.Version
 
-  AliasErrorMetricGreaterThanZeroAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmDescription: Lambda Function Error > 0
-      ComparisonOperator: GreaterThanThreshold
-      Dimensions:
-        - Name: Resource
-          Value: !Sub '${PutBookFunction}:${Environment}'
-        - Name: FunctionName
-          Value: !Ref PutBookFunction
-      EvaluationPeriods: 2
-      MetricName: Errors
-      Namespace: AWS/Lambda
-      Period: 60
-      Statistic: Sum
-      Threshold: 0
+  # AliasErrorMetricGreaterThanZeroAlarm:
+  #   Type: AWS::CloudWatch::Alarm
+  #   Properties:
+  #     AlarmDescription: Lambda Function Error > 0
+  #     ComparisonOperator: GreaterThanThreshold
+  #     Dimensions:
+  #       - Name: Resource
+  #         Value: !Sub '${PutMessageFunction}:${Environment}'
+  #       - Name: FunctionName
+  #         Value: !Ref PutMessageFunction
+  #     EvaluationPeriods: 2
+  #     MetricName: Errors
+  #     Namespace: AWS/Lambda
+  #     Period: 60
+  #     Statistic: Sum
+  #     Threshold: 0
 
 Outputs:
-  BookEventsQueueUrl:
-    Description: SQS queue url for new book events to be left in
-    Value: !Ref BookEventsQueue
-  BookEventsQueueArn:
-    Description: SQS queue ARN for new book events to be left in
-    Value: !GetAtt BookEventsQueue.Arn
-  PutBookFunctionArn:
-    Description: "Put book function ARN"
-    Value: !GetAtt PutBookFunction.Arn
-  PutBookFunctionIamRole:
-    Description: "IAM Role for Put Book function"
-    Value: !GetAtt PutBookFunctionRole.Arn
-  BooksTable:
-    Description: DynamoDB table where books are stored
-    Value: !Ref BooksTable
-  PreTrafficCheckFunctionArn:
-    Description: "Pre Traffic check function function ARN"
-    Value: !GetAtt PreTrafficCheckFunction.Arn
-  PreTrafficCheckFunctionIamRole:
-    Description: "IAM Role for Put Book Pre Traffic Check function"
-    Value: !GetAtt PreTrafficCheckFunctionRole.Arn
+  MessageEventsQueueUrl:
+    Description: SQS queue url for new message events to be left in
+    Value: !Ref MessageEventsQueue
+  MessageEventsQueueArn:
+    Description: SQS queue ARN for new message events to be left in
+    Value: !GetAtt MessageEventsQueue.Arn
+  PutMessageFunctionArn:
+    Description: "Put message function ARN"
+    Value: !GetAtt PutMessageFunction.Arn
+  PutMessageFunctionIamRole:
+    Description: "IAM Role for Put Message function"
+    Value: !GetAtt PutMessageFunctionRole.Arn
+  MessagesTable:
+    Description: DynamoDB table where messages are stored
+    Value: !Ref MessagesTable
+  # PreTrafficCheckFunctionArn:
+  #   Description: "Pre Traffic check function function ARN"
+  #   Value: !GetAtt PreTrafficCheckFunction.Arn
+  # PreTrafficCheckFunctionIamRole:
+  #   Description: "IAM Role for Put Message Pre Traffic Check function"
+  #   Value: !GetAtt PreTrafficCheckFunctionRole.Arn

@@ -53,4 +53,4 @@ sam deploy --template-file out.yml --stack-name cipherz-stack --parameter-overri
 
 aws dynamodb scan --table books --endpoint-url http://localhost:8000
 
-aws sqs send-message --queue-url "https://sqs.eu-west-1.amazonaws.com/xxxxxx/lambda-test" --message-body "hello from sqs-lambda trigger"
+aws sqs send-message --queue-url "https://sqs.us-east-1.amazonaws.com/666449929814/message-events-staging" --message-body "{\"batchSize\": 100,\"public\":\"publickey0\",\"lastGUID\":\"080cee5c-66d5-4a00-bea7-4b6523ba39aa\"}"

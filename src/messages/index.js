@@ -16,20 +16,24 @@ if (process.env.E2E_TEST) {
 const client = new sdk.DynamoDB(ddbOptions);
 const tableName = process.env.TABLE;
 
-const passphrase = "cryptographyishard";
-const keyPair = crypto.generateKeyPairSync('rsa', { 
-    modulusLength: 2048,
-    publicKeyEncoding: {
-        type: 'spki',
-        format: 'pem'
-    },
-    privateKeyEncoding: {
-        type: 'pkcs8',
-        format: 'pem',
-        cipher: 'aes-256-cbc',
-        passphrase
-    }
-});
+
+function mockGetKeyPairFromSecretsManager(publicKey) {
+    const passphrase = "cryptographyishard";
+    const keyPair = crypto.generateKeyPairSync('rsa', { 
+        modulusLength: 2048,
+        publicKeyEncoding: {
+            type: 'spki',
+            format: 'pem'
+        },
+        privateKeyEncoding: {
+            type: 'pkcs8',
+            format: 'pem',
+            cipher: 'aes-256-cbc',
+            passphrase
+        }
+    });
+    return keyPair;
+}
 
 
 function getBatchUpdateRequest() {
@@ -52,30 +56,33 @@ function addUpdateRequest(request, record) {
 
     exports.handler = async event => {
         try {
+            const job = JSON.parse(event.Records[0].body);
+            const {batchSize, public, lastGUID} = job;
+            const keyPair = mockGetKeyPairFromSecretsManager(public);
             const request = getBatchUpdateRequest();
 
-            // get 100 records from the database
-            const parms = {
+            params = {
+                ExclusiveStartKey: lastGUID, 
                 TableName: tableName,
-                Limit: 100
+                Limit: batchSize
             };
 
-            const records = await client.scan(parms).promise()
+            const records = await client.scan(params).promise()
             
             records.Items.forEach(record => {
-                record.public.S = 'signer';
 
                 const signature = crypto.publicEncrypt({
                     key: keyPair.publicKey,
                     padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
                     oaepHash: "sha256",
                 }, Buffer.from(record.message.S)).toString();
+
                 record.signature.S = signature;
+                record.public.S = keyPair.publicKey;
+
                 addUpdateRequest(request, record);
                 
             });
-
-            console.log(request);
 
             await client.batchWriteItem(request).promise();
 
