@@ -9,12 +9,12 @@ async function processBatch(batchSize, lastGUID) {
 
     const keyId = lruKeys.getNextKey();
 
-    console.log(`Processing batch of ${batchSize} records - starting at ${JSON.stringify(lastGUID)} with keyId ${keyId}`);
+    console.log(`Processing batch of ${batchSize} records - starting at ${JSON.stringify(lastGUID ? lastGUID.guid.S : null)} with keyId ${keyId}`);
 
     const job = {
         batchSize,
         public: keyId,
-        lastGUID: lastGUID
+        lastGUID: lastGUID ? lastGUID.guid.S : null
     };
     await sqs.sendMessage({
         QueueUrl: constants.QUEUE_URL,

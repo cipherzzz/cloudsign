@@ -1,6 +1,13 @@
 # Cloudsign
 An aws serverless app using sqs/lambda/dynamodb to cryptographically sign data in batches
 
+## Architecture
+The app is composed of a single lambda function that is triggered by an sqs queue. The lambda function is responsible for signing data in batches and storing the signed data in a dynamodb table. The batch process is handled by a node script that is run locally.
+
+
+
+
+
 ## SETUP
 
 ### Local DB setup
@@ -31,10 +38,10 @@ aws dynamodb scan --table messages-staging --endpoint-url http://localhost:8000
 ### Local lambda setup
 ```sh
 # Run local lambda
-TABLE=messages sam local invoke "PutBookFunction" -e events/sqs_event_message.json  --docker-network aws-local
+TABLE=messages-staging sam local invoke "PutMessageFunction" -e events/sqs_event_message.json  --docker-network cipherz-network
 
 # check if record was inserted in local dynamodb
-aws dynamodb scan --table messages --endpoint-url http://localhost:8000
+aws dynamodb scan --table messages-staging --endpoint-url http://localhost:8000
 
 
 ```
@@ -51,7 +58,28 @@ sam package --s3-bucket cipherz-bucket --s3-prefix cipherz --output-template-fil
 # Deploy the application/stack
 sam deploy --template-file out.yml --stack-name cipherz-stack --parameter-overrides ParameterKey=Environment,ParameterValue=staging --capabilities CAPABILITY_IAM
 
+# delete stack
+sam delete --stack-name cipherz-stack
 
-aws dynamodb scan --table books --endpoint-url http://localhost:8000
+```
 
-aws sqs send-message --queue-url "https://sqs.us-east-1.amazonaws.com/666449929814/message-events-staging" --message-body "{\"batchSize\": 100,\"public\":\"publickey0\",\"lastGUID\":\"080cee5c-66d5-4a00-bea7-4b6523ba39aa\"}"
+### Seed DB
+```
+# Generate records
+# Note scripts/constants.js
+cd scripts && node generate-seed.js
+
+# Seed DB
+./seed.sh
+```
+
+### Process Batch Signins
+```
+# Run batch signing process
+node process-batches.js
+```
+
+### Helpers
+aws dynamodb scan --table messages-staging || --endpoint-url http://localhost:8000
+
+aws sqs send-message --queue-url "https://sqs.us-east-1.amazonaws.com/666449929814/message-events-staging" --message-body "{\"batchSize\":25,\"public\":\"b2489ec4-8484-4b63-b266-cb011354e65e\",\"lastGUID\":\"c4476385-c210-4bd6-bd50-271c38048487\"}"

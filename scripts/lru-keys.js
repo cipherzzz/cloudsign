@@ -83,7 +83,6 @@ function getLRU() {
 
     for (let i = 0; i < signers.length; i++) {
         const signer = signers[i]
-        console.log(signer)
         lru.set(signer, signer)
     }
 

@@ -57,9 +57,9 @@ exports.handler = async event => {
         params = {
             TableName: tableName,
             Limit: batchSize,
-            // ExclusiveStartKey: {
-            //     "guid": { "S": lastGUID }
-            // },
+            ExclusiveStartKey: {
+                "guid": { "S": lastGUID }
+            },
         };
 
         console.log(`Processing batch of ${batchSize} records - starting at ${JSON.stringify(lastGUID)} with keyId ${public}`)
@@ -67,17 +67,7 @@ exports.handler = async event => {
         const records = await client.scan(params).promise()
         console.log(`Found ${records.Items.length} records to sign`);
 
-        // records.Items.forEach(async record => {
-
-        //     record.signature.S = await sign(public, record.message.S);
-        //     record.public.S = public;
-        //     record.signed.BOOL = true;
-
-        //     addUpdateRequest(request, record);
-
-        // });
-
-        for(let i=0; i<records.Items.length; i++) {
+        for (let i = 0; i < records.Items.length; i++) {
             const record = records.Items[i];
             record.signature.S = await sign(public, record.message.S);
             record.public.S = public;

@@ -12,5 +12,5 @@ FILES="data/*"
 for f in $FILES
 do
   echo "Processing $f file..."
-  aws dynamodb batch-write-item --request-items file://$f --endpoint-url http://localhost:8000
+  aws dynamodb batch-write-item --request-items file://$f
 done
