@@ -3,7 +3,7 @@
       {
         "messageId": "19dd0b57-b21e-4ac1-bd88-01bbb068cb78",
         "receiptHandle": "MessageReceiptHandle",
-        "body": "{\"batchSize\":25,\"public\":\"0x123\",\"lastGUID\":\"185e7a0b-ea1e-4966-b635-564a001b34f8\"}",
+        "body": "{\"batchSize\":25,\"public\":\"b2489ec4-8484-4b63-b266-cb011354e65e\"}",
         "attributes": {
           "ApproximateReceiveCount": "1",
           "SentTimestamp": "1523232000000",

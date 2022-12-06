@@ -20,7 +20,7 @@ const seed = (totalRecords, batchSize) => {
                                 "S": faker.datatype.uuid()
                             },
                             "message": {
-                                "S": faker.lorem.paragraph()
+                                "S": faker.lorem.sentence()
                             },
                             "public": {
                                 "S": ""
