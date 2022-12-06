@@ -1,5 +1,5 @@
 const sdk = require('aws-sdk');
-const crypto = require('crypto');
+//const crypto = require('crypto');
 
 const ddbOptions = {
     apiVersion: '2012-08-10'
@@ -17,23 +17,23 @@ const client = new sdk.DynamoDB(ddbOptions);
 const tableName = process.env.TABLE;
 
 
-function mockGetKeyPairFromSecretsManager(publicKey) {
-    const passphrase = "cryptographyishard";
-    const keyPair = crypto.generateKeyPairSync('rsa', { 
-        modulusLength: 2048,
-        publicKeyEncoding: {
-            type: 'spki',
-            format: 'pem'
-        },
-        privateKeyEncoding: {
-            type: 'pkcs8',
-            format: 'pem',
-            cipher: 'aes-256-cbc',
-            passphrase
-        }
-    });
-    return keyPair;
-}
+// function mockGetKeyPairFromSecretsManager(publicKey) {
+//     const passphrase = "cryptographyishard";
+//     const keyPair = crypto.generateKeyPairSync('rsa', {
+//         modulusLength: 2048,
+//         publicKeyEncoding: {
+//             type: 'spki',
+//             format: 'pem'
+//         },
+//         privateKeyEncoding: {
+//             type: 'pkcs8',
+//             format: 'pem',
+//             cipher: 'aes-256-cbc',
+//             passphrase
+//         }
+//     });
+//     return keyPair;
+// }
 
 
 function getBatchUpdateRequest() {
@@ -54,41 +54,47 @@ function addUpdateRequest(request, record) {
 }
 
 
-    exports.handler = async event => {
-        try {
-            const job = JSON.parse(event.Records[0].body);
-            const {batchSize, public, lastGUID} = job;
-            const keyPair = mockGetKeyPairFromSecretsManager(public);
-            const request = getBatchUpdateRequest();
+exports.handler = async event => {
+    try {
+        const job = JSON.parse(event.Records[0].body);
+        const { batchSize, public, lastGUID } = job;
+        //const keyPair = mockGetKeyPairFromSecretsManager(public);
+        const request = getBatchUpdateRequest();
 
-            params = {
-                ExclusiveStartKey: lastGUID, 
-                TableName: tableName,
-                Limit: batchSize
-            };
+        params = {
+            TableName: tableName,
+            Limit: batchSize,
+            // ExclusiveStartKey: {
+            //     "guid": { "S": lastGUID}
+            // },
+        };
 
-            const records = await client.scan(params).promise()
-            
-            records.Items.forEach(record => {
+        console.log(`Processing batch of ${batchSize} records - starting at ${JSON.stringify(lastGUID)} with keyId ${public}`)
 
-                const signature = crypto.publicEncrypt({
-                    key: keyPair.publicKey,
-                    padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-                    oaepHash: "sha256",
-                }, Buffer.from(record.message.S)).toString();
+        const records = await client.scan(params).promise()
+        console.log(`Found ${records.Items.length} records to sign`);
 
-                record.signature.S = signature;
-                record.public.S = keyPair.publicKey;
+        records.Items.forEach(record => {
 
-                addUpdateRequest(request, record);
-                
-            });
+            // const signature = crypto.publicEncrypt({
+            //     key: keyPair.publicKey,
+            //     padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+            //     oaepHash: "sha256",
+            // }, Buffer.from(record.message.S)).toString();
 
-            await client.batchWriteItem(request).promise();
+            record.signature.S = "static signature";
+            record.public.S = public;
+            record.signed.BOOL = true;
 
-            return;
-        } catch (error) {
-            console.log(error);
-            throw error;
-        }
+            addUpdateRequest(request, record);
+
+        });
+
+        await client.batchWriteItem(request).promise();
+
+        return;
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
 };

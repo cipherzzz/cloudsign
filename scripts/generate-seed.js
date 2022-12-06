@@ -1,4 +1,4 @@
-// generate faker seed
+const constants =  require('./constants');
 
 const { faker } = require("@faker-js/faker")
 const fs = require('fs');
@@ -6,11 +6,13 @@ const fs = require('fs');
 const seed = (totalRecords, batchSize) => {
 
     const batches = Math.ceil(totalRecords / batchSize);
+    const tableName = constants.TABLE_NAME;
 
     for (let i = 0; i < batches; i++) {
-        const payload = { "messages-staging": [] };
+        const payload = {}
+        payload[tableName] = []
         for (let j = 0; j < batchSize; j++) {
-            payload["messages-staging"].push(
+            payload[tableName].push(
                 {
                     PutRequest: {
                         Item: {
@@ -25,13 +27,16 @@ const seed = (totalRecords, batchSize) => {
                             },
                             "signature": {
                                 "S": ""
+                            },
+                            "signed": {
+                                "BOOL": false
                             }
                         }
                     }
                 });
         }
 
-        console.log("batch:", i, "size:", payload["messages-staging"].length)
+        console.log("batch:", i, "size:", payload[tableName].length)
         const fileName = `./data/seed-${i}-of-${batches}.json`;
         fs.writeFile(fileName, JSON.stringify(payload, null, 2), (err) => {
             if (err) {
@@ -43,4 +48,4 @@ const seed = (totalRecords, batchSize) => {
     }
 }
 
-seed(100, 25)
+seed(constants.TOTAL_RECORDS, constants.BATCH_SIZE)

@@ -8,15 +8,15 @@ You don't have to do this if you don't want to test locally
 
 ```sh
 # Create local docker network
-docker network create aws-local
+docker network create cipherz-network
 
 # Run local dynamodb container in the network
-docker run -d --network aws-local -v "$PWD":/dynamodb_local_db -p 8000:8000 \
+docker run -d --network cipherz-network -v "$PWD":/dynamodb_local_db -p 8000:8000 \
     --network-alias=dynamodb --name dynamodb \
     amazon/dynamodb-local -jar DynamoDBLocal.jar -sharedDb
 
 # Create the following table in the local DynamoDB
-aws dynamodb create-table --table-name messages \
+aws dynamodb create-table --table-name messages-staging \
     --attribute-definitions AttributeName=guid,AttributeType=S \
     --key-schema AttributeName=guid,KeyType=HASH \
     --endpoint-url http://localhost:8000 \
@@ -24,7 +24,8 @@ aws dynamodb create-table --table-name messages \
 
 # Check previous step ran successfully
 aws dynamodb list-tables --endpoint-url http://localhost:8000
-aws dynamodb describe-table --table-name books --endpoint-url http://localhost:8000
+aws dynamodb describe-table --table-name messages-staging --endpoint-url http://localhost:8000
+aws dynamodb scan --table messages-staging --endpoint-url http://localhost:8000
 
 ```
 ### Local lambda setup

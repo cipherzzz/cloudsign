@@ -36,13 +36,7 @@ Resources:
       FunctionName: !Sub 'messages-${Environment}'
       CodeUri: ./src/messages/
       Handler: index.handler
-      AutoPublishAlias: !Ref Environment
-      # DeploymentPreference:
-      #   Type: !If [IsProduction, Canary10Percent5Minutes, AllAtOnce]
-      #   Alarms:
-      #     - !Ref AliasErrorMetricGreaterThanZeroAlarm
-      #   Hooks:
-      #     PreTraffic: !Ref PreTrafficCheckFunction      
+      AutoPublishAlias: !Ref Environment    
       Environment:
         Variables:
           TABLE: !Ref MessagesTable
@@ -54,6 +48,14 @@ Resources:
             TableName: !Ref MessagesTable
         - SQSPollerPolicy:
             QueueName: !Ref MessageEventsQueue
+        - KMSEncryptPolicy:
+            KeyId: !Ref ECCSigningKey01
+        - KMSEncryptPolicy:
+            KeyId: !Ref ECCSigningKey02
+        - KMSEncryptPolicy:
+            KeyId: !Ref ECCSigningKey03
+        - KMSEncryptPolicy:
+            KeyId: !Ref ECCSigningKey04
       Events:
         NewMessageEvent:
           Type: SQS
@@ -75,53 +77,101 @@ Resources:
       SSESpecification:
         SSEEnabled: true
 
-  # PreTrafficCheckFunction:
-  #   Type: AWS::Serverless::Function
-  #   Properties:
-  #     FunctionName: !Sub 'CodeDeployHook_put-message-${Environment}-pre-traffic-check'
-  #     CodeUri: ./src/pre-traffic-check/
-  #     Handler: index.handler
-  #     Environment:
-  #       Variables:
-  #         TABLE: !Ref MessagesTable
-  #         FN_NEW_VERSION: !Ref PutMessageFunction.Version
-  #     Tags:
-  #       project: my-project
-  #       environment: !Ref Environment
-  #     Policies:
-  #       - DynamoDBCrudPolicy:
-  #           TableName: !Ref MessagesTable
-  #       - Version: '2012-10-17'
-  #         Statement:
-  #         - Effect: Allow
-  #           Action:
-  #             - codedeploy:PutLifecycleEventHookExecutionStatus
-  #           Resource:
-  #             !Sub 'arn:aws:codedeploy:${AWS::Region}:${AWS::AccountId}:deploymentgroup:${ServerlessDeploymentApplication}/*'
-  #       - Version: '2012-10-17'
-  #         Statement:
-  #         - Effect: Allow
-  #           Action:
-  #             - lambda:InvokeFunction
-  #           Resource: !Ref PutMessageFunction.Version
+  ECCSigningKey01:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: ECC asymmetric KMS key for signing and verification
+      KeySpec: ECC_SECG_P256K1 
+      KeyUsage: SIGN_VERIFY
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: kms-ecc-key-policy
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: 'arn:aws:iam::666449929814:user/admin'
+            Action: 'kms:*'
+            Resource: '*'
 
-  # AliasErrorMetricGreaterThanZeroAlarm:
-  #   Type: AWS::CloudWatch::Alarm
-  #   Properties:
-  #     AlarmDescription: Lambda Function Error > 0
-  #     ComparisonOperator: GreaterThanThreshold
-  #     Dimensions:
-  #       - Name: Resource
-  #         Value: !Sub '${PutMessageFunction}:${Environment}'
-  #       - Name: FunctionName
-  #         Value: !Ref PutMessageFunction
-  #     EvaluationPeriods: 2
-  #     MetricName: Errors
-  #     Namespace: AWS/Lambda
-  #     Period: 60
-  #     Statistic: Sum
-  #     Threshold: 0
+  ECCSigningKeyAlias01:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/ecc-signing-key-01'
+      TargetKeyId: !Ref ECCSigningKey01
 
+  ECCSigningKey02:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: ECC asymmetric KMS key for signing and verification
+      KeySpec: ECC_SECG_P256K1 
+      KeyUsage: SIGN_VERIFY
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: kms-ecc-key-policy
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: 'arn:aws:iam::666449929814:user/admin'
+            Action: 'kms:*'
+            Resource: '*'
+
+  ECCSigningKeyAlias02:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/ecc-signing-key-02'
+      TargetKeyId: !Ref ECCSigningKey02
+
+
+  ECCSigningKey03:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: ECC asymmetric KMS key for signing and verification
+      KeySpec: ECC_SECG_P256K1 
+      KeyUsage: SIGN_VERIFY
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: kms-ecc-key-policy
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: 'arn:aws:iam::666449929814:user/admin'
+            Action: 'kms:*'
+            Resource: '*'
+
+  ECCSigningKeyAlias01:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/ecc-signing-key-03'
+      TargetKeyId: !Ref ECCSigningKey03 
+
+
+  ECCSigningKey04:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: ECC asymmetric KMS key for signing and verification
+      KeySpec: ECC_SECG_P256K1 
+      KeyUsage: SIGN_VERIFY
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: kms-ecc-key-policy
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: 'arn:aws:iam::666449929814:user/admin'
+            Action: 'kms:*'
+            Resource: '*'
+
+  ECCSigningKeyAlias04:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/ecc-signing-key-04'
+      TargetKeyId: !Ref ECCSigningKey04                 
+
+    
 Outputs:
   MessageEventsQueueUrl:
     Description: SQS queue url for new message events to be left in
@@ -138,9 +188,15 @@ Outputs:
   MessagesTable:
     Description: DynamoDB table where messages are stored
     Value: !Ref MessagesTable
-  # PreTrafficCheckFunctionArn:
-  #   Description: "Pre Traffic check function function ARN"
-  #   Value: !GetAtt PreTrafficCheckFunction.Arn
-  # PreTrafficCheckFunctionIamRole:
-  #   Description: "IAM Role for Put Message Pre Traffic Check function"
-  #   Value: !GetAtt PreTrafficCheckFunctionRole.Arn
+  ECCSigningKey01:
+    Description: ECC asymmetric KMS key for signing and verification
+    Value: !Ref ECCSigningKey01
+  ECCSigningKey02:
+    Description: ECC asymmetric KMS key for signing and verification
+    Value: !Ref ECCSigningKey02
+  ECCSigningKey03:
+    Description: ECC asymmetric KMS key for signing and verification
+    Value: !Ref ECCSigningKey03
+  ECCSigningKey04:
+    Description: ECC asymmetric KMS key for signing and verification
+    Value: !Ref ECCSigningKey04
